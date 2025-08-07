@@ -5,7 +5,7 @@ This repository contains a full machine learning pipeline for preprocessing EEG 
 ## Pipeline Overview
 
 1. **Subject Metadata Loading**
-   - Loads subject IDs and diagnostic groups from `participants.tsv`.
+   - Loads subject IDs and diagnostic groups from `participants.tsv`
 
 2. **EEG Preprocessing**
    - **Bandpass Filter**: 0.5–45 Hz (Butterworth): Removes non-physiological noise
@@ -17,7 +17,7 @@ This repository contains a full machine learning pipeline for preprocessing EEG 
 ![Preprocessed EEG](reports/figures/preprocessed_eeg.png)
 
 3. **Epoching**
-   - Segments EEG into overlapping 4-second windows with 0.5s overlap.
+   - Segments EEG into overlapping 4-second windows with 0.5s overlap
 
 4. **Feature Extraction**
    - Computes Relative Band Power (RBP) across:
@@ -26,10 +26,11 @@ This repository contains a full machine learning pipeline for preprocessing EEG 
      - Alpha (8–13 Hz)
      - Beta (13–25 Hz)
      - Gamma (25–45 Hz)
-   - Power values are averaged across channels and epochs.
+   - Power Spectral Density (PSD) estimated using Welch's method
+   - RBP is calculated by dividing absolute band power by total power, averaged across channels and epochs
 
 5. **Visualization**
-   - Boxplot comparing RBP distributions across diagnostic groups.
+   - Boxplot comparing RBP distributions across diagnostic groups
 
 ![RBP by Band and Group](reports/figures/rbp_by_band_and_group_boxplot.png)
 
@@ -37,9 +38,9 @@ This repository contains a full machine learning pipeline for preprocessing EEG 
    - Performs Leave-One-Out cross-validation
    - Classifiers tested:
      - LightGBM
-     - SVM (Support Vector Machines)
-     - KNN (K-Nearest Neighbors)
-     - MLP (Multi-layer Perceptron)
+     - SVM
+     - KNN
+     - MLP
      - Random Forest
    - Identifies best model and feature subset for:
      - AD vs. CN classification
@@ -47,13 +48,20 @@ This repository contains a full machine learning pipeline for preprocessing EEG 
 
 ## Results
 
-- Achieved 76.92% accuracy in classifying AD vs. CN subjects.
+- Achieved 76.92% accuracy in classifying AD vs. CN subjects
   - Optimal model: LightGBM
   - Optimal features: delta, theta, alpha, and beta RBPs
-- Achieved 69.23% accuracy in classifying FTD vs. CN subjects.
+- Achieved 69.23% accuracy in classifying FTD vs. CN subjects
   - Optimal model: LightGBM
   - Optimal features: alpha and beta RBPs
-  - Observation: The same accuracy was achieved using just these two bands as with 3-, 4-, or all 5-band combinations, suggesting alpha and beta bands carry the most discriminative power for FTD vs. CN.
+  - Observation: The same accuracy was achieved using just these two bands as with 3-, 4-, or all 5-band combinations, suggesting alpha and beta bands carry the most discriminative power for FTD vs. CN
+ 
+## Future Work
+
+- Outlier detection and removal
+- Optimize hyperparameters
+- Extract additional features
+- Include more detailed visualization of results (e.g. statistical significance)
 
 ## Data Source
 

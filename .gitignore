@@ -1,9 +1,6 @@
-# Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[cod]
 
-# C extensions
-*.so
+.venv/
 
 # Distribution / packaging
 .Python
@@ -24,8 +21,6 @@ var/
 *.egg
 
 # PyInstaller
-#  Usually these files are written by a python script from a template
-#  before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
 
@@ -76,9 +71,6 @@ target/
 # Jupyter NB Checkpoints
 .ipynb_checkpoints/
 
-# exclude data from source control by default
-# /data/
-
 # Mac OS-specific storage files
 .DS_Store
 
@@ -89,5 +81,8 @@ target/
 # Mypy cache
 .mypy_cache/
 
-/data/raw
-/data/interim/epochs
+# venv
+.venv/
+
+# Data
+data/
