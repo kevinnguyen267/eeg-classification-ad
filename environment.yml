@@ -1,0 +1,21 @@
+name: eeg-classification-ad-ftd
+channels:
+  - conda-forge
+dependencies:
+  - python=3.10
+
+  # Core
+  - numpy
+  - pandas
+
+  # EEG Processing
+  - mne
+  - mne-icalabel
+
+  # Pip and pip-installed packages
+  - pip
+  - pip:
+      # EEG Processing
+      - asrpy
+        # Machine Learning
+      - lightgbm
