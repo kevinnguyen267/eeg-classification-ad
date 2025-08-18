@@ -11,12 +11,12 @@ def main():
 
     # Process raw EEG dataset
     dataset = Dataset()
-    if not Config.LOAD_PROCESSED_DATASET:
+    if Config.LOAD_PROCESSED_DATASET:
+        processed_dataset_pkl_path = dataset.get_processed_dataset_filepath()
+    else:
         dataset.validate_raw_dataset()
         dataset.create_dataset()
         processed_dataset_pkl_path = dataset.save_dataset()
-    else:
-        processed_dataset_pkl_path = dataset.get_processed_dataset_filepath()
 
     # Visualize processed dataset
     if Config.CREATE_AND_SAVE_FIGURES:

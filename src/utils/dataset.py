@@ -58,6 +58,24 @@ class Dataset:
                 f"No .set files found in {Config.RAW_DATA_DIR}. Please ensure the dataset is complete."
             )
 
+        # Filter out non-AD/CN subjects
+        self.participants_df = self.participants_df[
+            self.participants_df["group"].isin(["A", "C"])
+        ]
+        if self.participants_df.empty:
+            raise ValueError(f"No AD or CN subjects found in {self.participants_path}.")
+        subject_ids = set(self.participants_df["subject_id"])
+        self.filepaths = [
+            fp
+            for fp in self.filepaths
+            if os.path.basename(fp).removesuffix("_task-eyesclosed_eeg.set")
+            in subject_ids
+        ]
+        if len(self.filepaths) == 0:
+            raise FileNotFoundError(
+                f"No AD or CN group .set files found in {Config.RAW_DATA_DIR}. Please ensure the dataset is complete."
+            )
+
     def read_raw_eeg(self, filepath):
         """Read a raw EEG file."""
         try:
