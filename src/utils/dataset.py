@@ -1,4 +1,5 @@
 import os
+import warnings
 from glob import glob
 
 import asrpy
@@ -6,6 +7,7 @@ import mne
 import numpy as np
 import pandas as pd
 from mne_icalabel import label_components
+from tqdm import tqdm
 
 from config import Config
 
@@ -91,7 +93,11 @@ class Dataset:
             raw_for_ica = raw.copy()
             iir_params = dict(order=4, ftype="butter")
             raw_for_ica.filter(
-                l_freq=0.5, h_freq=45, method="iir", iir_params=iir_params
+                l_freq=0.5,
+                h_freq=45,
+                method="iir",
+                iir_params=iir_params,
+                verbose=False,
             )
 
             # ASR for high-amplitude artifacts
@@ -101,18 +107,32 @@ class Dataset:
 
             # ICA for eye and muscle artifacts
             ica = mne.preprocessing.ICA(
-                n_components=len(raw_asr.info["ch_names"]),
-                method="infomax",
+                n_components=0.999999, method="infomax", fit_params=dict(extended=True)
             )
-            ica.fit(raw_asr)
-            labels = label_components(raw_asr, ica, "iclabel")
+            ica.fit(raw_asr, verbose=False)
+
+            # Suppress warnings since raw data is already re-referenced
+            # and we're using 0.5-45 Hz instead of 1-100 Hz filtering to preserve information
+            with warnings.catch_warnings():
+                warnings.filterwarnings(
+                    "ignore",
+                    message=".*common average reference.*",
+                    category=RuntimeWarning,
+                )
+                warnings.filterwarnings(
+                    "ignore",
+                    message=".*not filtered between 1 and 100 Hz.*",
+                    category=RuntimeWarning,
+                )
+                labels = label_components(raw_asr, ica, "iclabel")
+
             labels_to_remove = ["eye blink", "muscle artifact"]
             ica.exclude = [
                 i
                 for i, label in enumerate(labels["labels"])
                 if label in labels_to_remove
             ]
-            raw_clean = ica.apply(raw_asr)
+            raw_clean = ica.apply(raw_asr, verbose=False)
 
             return raw_clean
 
@@ -163,19 +183,26 @@ class Dataset:
                 raise ValueError(f"Invalid window length: {win}")
 
             # Extract data array
+            # x shape: (n_epochs, n_channels, n_times)
             x = epochs.get_data()
             if x.size == 0:
                 raise ValueError("No data found in epochs")
 
             # Compute Power Spectral Density using Welch's method
+            # psds shape: (n_epochs, n_channels, n_freqs)
             psds, freqs = mne.time_frequency.psd_array_welch(
-                x, sfreq, fmin=0.5, fmax=45, n_fft=win
+                x,
+                sfreq,
+                fmin=0.5,
+                fmax=45,
+                n_fft=win,
+                n_overlap=win // 2,
+                verbose=False,
             )
             if psds.size == 0 or freqs.size == 0:
                 raise RuntimeError("PSD computation result is empty")
 
-            # Calculate total power across all frequencies
-            # psds shape: (n_epochs, n_channels, n_freqs)
+            # Sum across frequencies (axis=2), then take mean across epochs and channels
             total_power = np.mean(np.sum(psds, axis=2))
             if total_power <= 0:
                 raise RuntimeError("Total power is non-positive")
@@ -207,9 +234,8 @@ class Dataset:
             if sfreq <= 0:
                 raise ValueError(f"Invalid sampling frequency: {sfreq}")
 
-            # Calculate window length for Welch's method
-            # 2-second window with 0.5 Hz frequency resolution
-            win = int(2 / 0.5 * sfreq)
+            # 2-second window length for Welch's method
+            win = int(2 * sfreq)
 
             # Define frequency bands and their corresponding ranges
             bands = {
@@ -224,9 +250,9 @@ class Dataset:
             filepaths = glob(
                 os.path.join(Config.INTERIM_DATA_DIR, "epochs", "*_epo.fif")
             )
-            for filepath in filepaths:
+            for filepath in tqdm(filepaths, desc="Feature Extraction "):
                 subject_id = os.path.basename(filepath).rstrip("_epo.fif")
-                epochs = mne.read_epochs(filepath)
+                epochs = mne.read_epochs(filepath, verbose=False)
                 rbps = self.extract_rbps(epochs, sfreq, win, bands)
                 for band, rbp in rbps.items():
                     mask = self.participants_df["subject_id"] == subject_id
@@ -239,8 +265,8 @@ class Dataset:
         """Create a dataset from the validated raw files."""
         try:
             # Create epochs (if existing epochs aren't configured to be loaded from save)
-            if not Config.LOAD_EPOCHS:
-                for filepath in self.filepaths:
+            if not Config.LOAD_PREPROCESSED_EPOCHS:
+                for filepath in tqdm(self.filepaths, desc="Preprocessing      "):
                     # Preprocess and epoch for each subject
                     subject_id = os.path.basename(filepath).split("_")[0]
                     raw = self.read_raw_eeg(filepath)
@@ -251,6 +277,7 @@ class Dataset:
                             Config.INTERIM_DATA_DIR, "epochs", f"{subject_id}_epo.fif"
                         ),
                         overwrite=True,
+                        verbose=False,
                     )
 
             # Extract features from epochs

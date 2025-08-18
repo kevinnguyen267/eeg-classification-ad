@@ -21,10 +21,6 @@ class Evaluator:
                 f"Failed to load data from {processed_dataset_pkl_path}: {str(e)}"
             ) from e
 
-        # ! Reset index and rename 'Group' to 'group' (support legacy processed dataset)
-        self.df = self.df.reset_index()
-        self.df = self.df.rename(columns={"Group": "group"})
-
         if "group" not in self.df.columns:
             raise ValueError("Processed DataFrame is missing 'group' column.")
 

@@ -11,7 +11,7 @@ def main():
 
     # Process raw EEG dataset
     dataset = Dataset()
-    if not Config.LOAD_DATASET:
+    if not Config.LOAD_PROCESSED_DATASET:
         dataset.validate_raw_dataset()
         dataset.create_dataset()
         processed_dataset_pkl_path = dataset.save_dataset()
@@ -24,9 +24,10 @@ def main():
         visualizer.plot_rbp_by_band_and_group()
 
     # Evaluate features and models
-    evaluator = Evaluator(processed_dataset_pkl_path)
-    evaluator.evaluate_models("ad_cn")
-    evaluator.evaluate_models("ftd_cn")
+    if Config.EVALUATE:
+        evaluator = Evaluator(processed_dataset_pkl_path)
+        evaluator.evaluate_models("ad_cn")
+        evaluator.evaluate_models("ftd_cn")
 
 
 if __name__ == "__main__":

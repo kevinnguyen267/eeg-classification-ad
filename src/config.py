@@ -13,11 +13,14 @@ class Config:
     FIGURES_DIR = REPORTS_DIR / "figures"
 
     # Load from checkpoints
-    LOAD_EPOCHS = False
-    LOAD_DATASET = False
+    LOAD_PREPROCESSED_EPOCHS = False
+    LOAD_PROCESSED_DATASET = False
 
     # Create and save figures
     CREATE_AND_SAVE_FIGURES = False
+
+    # Evaluate features and models
+    EVALUATE = False
 
     @staticmethod
     def create_directories():
