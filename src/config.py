@@ -1,3 +1,4 @@
+import logging
 import os
 from pathlib import Path
 
@@ -12,19 +13,30 @@ class Config:
     REPORTS_DIR = PROJECT_ROOT / "reports"
     FIGURES_DIR = REPORTS_DIR / "figures"
 
-    # Load from checkpoints
-    LOAD_PREPROCESSED_EPOCHS = False
-    LOAD_PROCESSED_DATASET = False
+    # Load dataset from checkpoints
+    LOAD_PREPROCESSED_EPOCHS = True
+    LOAD_PROCESSED_DATASET = True
 
-    # Create and save figures
-    CREATE_AND_SAVE_FIGURES = False
+    # Visualize processed dataset
+    VISUALIZE = False
 
-    # Evaluate features and models
-    EVALUATE = False
+    # Evaluate model using cross-validation
+    EVALUATE = True
+    CV_STRATEGY = "stratified_kfold"  # "loso" or "stratified_kfold"
+
+    @staticmethod
+    def setup_logging():
+        """Configure logging for the project."""
+        logging.basicConfig(
+            level=logging.INFO,
+            format="%(asctime)s - %(levelname)s - %(message)s",
+            datefmt="%H:%M:%S",
+        )
+        return logging.getLogger(__name__)
 
     @staticmethod
     def create_directories():
-        """Create necessary directories if they do not exist"""
+        """Create necessary directories if they do not exist."""
         os.makedirs(Config.INTERIM_DATA_DIR, exist_ok=True)
         os.makedirs(os.path.join(Config.INTERIM_DATA_DIR, "epochs"), exist_ok=True)
         os.makedirs(Config.PROCESSED_DATA_DIR, exist_ok=True)

@@ -12,10 +12,11 @@ dependencies:
   - mne
   - mne-icalabel
 
+  # Machine Learning
+  - xgboost
+
   # Pip and pip-installed packages
   - pip
   - pip:
       # EEG Processing
       - asrpy
-        # Machine Learning
-      - lightgbm
