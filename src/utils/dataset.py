@@ -189,8 +189,8 @@ class Dataset:
         except Exception as e:
             raise RuntimeError(f"Epoching failed: {str(e)}") from e
 
-    def extract_rbps(self, epochs, sfreq, win, bands):
-        """Extract Relative Band Power (RBP) features from epoched EEG data."""
+    def compute_rbps(self, subject_id, epochs, sfreq, win, bands):
+        """Vectorized implementation to compute Relative Band Powers (RBPs) from epoched EEG data."""
         try:
             # Input validation
             if epochs is None or len(epochs) == 0:
@@ -201,13 +201,11 @@ class Dataset:
                 raise ValueError(f"Invalid window length: {win}")
 
             # Extract data array
-            # x shape: (n_epochs, n_channels, n_times)
-            x = epochs.get_data()
+            x = epochs.get_data()  # shape: (n_epochs, n_channels, n_times)
             if x.size == 0:
                 raise ValueError("No data found in epochs")
 
             # Compute Power Spectral Density using Welch's method
-            # psds shape: (n_epochs, n_channels, n_freqs)
             psds, freqs = mne.time_frequency.psd_array_welch(
                 x,
                 sfreq,
@@ -216,33 +214,52 @@ class Dataset:
                 n_fft=win,
                 n_overlap=win // 2,
                 verbose=False,
-            )
+            )  # psds shape: (n_epochs, n_channels, n_freqs)
             if psds.size == 0 or freqs.size == 0:
                 raise RuntimeError("PSD computation result is empty")
 
-            # Sum across frequencies (axis=2), then take mean across epochs and channels
-            total_power = np.mean(np.sum(psds, axis=2))
-            if total_power <= 0:
-                raise RuntimeError("Total power is non-positive")
+            # Sum across frequencies (axis=2) then take mean across epochs (axis=0) to get per channel total power
+            # shape: (n_channels,)
+            total_power_per_channel = np.sum(psds, axis=2).mean(axis=0)
+            if np.any(total_power_per_channel <= 0):
+                raise RuntimeError(
+                    "Total power is non-positive for at least one channel"
+                )
 
-            # Calculate relative band powers
-            rbps = {}
-            for band, (fmin, fmax) in bands.items():
-                # Find frequency indices for this band
-                freq_mask = np.logical_and(freqs >= fmin, freqs <= fmax)
-                if not np.any(freq_mask):
-                    raise ValueError(
-                        f"No frequencies found in band {band} ({fmin}-{fmax} Hz)"
-                    )
+            # Create subject and frequency band masks for later assignment
+            subject_mask = self.participants_df["subject_id"] == subject_id
+            freq_masks = np.array(
+                [(freqs >= fmin) & (freqs < fmax) for fmin, fmax in bands.values()]
+            )  # shape: (n_bands, n_freqs)
 
-                # Calculate band power and normalize
-                band_power = np.mean(np.sum(psds[:, :, freq_mask], axis=2))
-                rbps[band] = band_power / total_power
+            # psds * freq_masks = shape: (n_epochs, n_channels, n_bands, n_freqs)
+            # Sum over frequencies (axis=3) and mean over epochs (axis=0)
+            band_power_per_channel = np.sum(
+                psds[:, :, None, :] * freq_masks[None, None, :, :], axis=3
+            ).mean(axis=0)  # shape: (n_channels, n_bands)
 
-            return rbps
+            # Compute RBPs for all bands per channel
+            rbp_per_channel = (
+                band_power_per_channel / total_power_per_channel[:, None]
+            )  # shape: (n_channels, n_bands)
+
+            # Create column names and RBP values for assignment
+            columns = []
+            rbps = []
+            band_names = list(bands.keys())
+            for band_idx, band_name in enumerate(band_names):
+                band_columns = [
+                    f"{band_name}_rbp_ch{ch_idx + 1}"
+                    for ch_idx in range(rbp_per_channel.shape[0])
+                ]
+                columns.extend(band_columns)
+                rbps.extend(rbp_per_channel[:, band_idx])
+
+            # Assignment to subject
+            self.participants_df.loc[subject_mask, columns] = rbps
 
         except Exception as e:
-            raise RuntimeError(f"Failed to extract RBPs: {str(e)}") from e
+            raise RuntimeError(f"Failed to compute RBPs: {str(e)}") from e
 
     def extract_features(self):
         """Extract features from the epoched EEG data."""
@@ -264,17 +281,14 @@ class Dataset:
                 "gamma": (25, 45),
             }
 
-            # Extract features from epochs
+            # Extract Relative Band Powers (RBPs) from epochs
             filepaths = glob(
                 os.path.join(Config.INTERIM_DATA_DIR, "epochs", "*_epo.fif")
             )
             for filepath in tqdm(filepaths, desc="Feature Extraction "):
-                subject_id = os.path.basename(filepath).rstrip("_epo.fif")
                 epochs = mne.read_epochs(filepath, verbose=False)
-                rbps = self.extract_rbps(epochs, sfreq, win, bands)
-                for band, rbp in rbps.items():
-                    mask = self.participants_df["subject_id"] == subject_id
-                    self.participants_df.loc[mask, f"{band}_rbp"] = rbp
+                subject_id = os.path.basename(filepath).rstrip("_epo.fif")
+                self.compute_rbps(subject_id, epochs, sfreq, win, bands)
 
         except Exception as e:
             raise RuntimeError(f"Feature extraction failed: {str(e)}") from e
