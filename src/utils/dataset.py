@@ -14,7 +14,13 @@ from config import Config
 
 class Dataset:
     def __init__(self):
-        pass
+        # Filepaths for saving/loading the processed dataset
+        self.dataset_filepath_csv = os.path.join(
+            Config.PROCESSED_DATA_DIR, "dataset.csv"
+        )
+        self.dataset_filepath_pkl = os.path.join(
+            Config.PROCESSED_DATA_DIR, "dataset.pkl"
+        )
 
     def validate_raw_dataset(self):
         """Check if the raw data directory exists and contains the required files."""
@@ -47,7 +53,6 @@ class Dataset:
             self.participants_df = participants_df[["participant_id", "Group"]].rename(
                 columns={"Group": "group", "participant_id": "subject_id"}
             )
-
         except Exception as e:
             raise RuntimeError(f"Failed to read participants.tsv: {str(e)}") from e
 
@@ -92,7 +97,6 @@ class Dataset:
                 raise RuntimeError(f"Raw EEG data returned None: {filepath}")
 
             return raw
-
         except Exception as e:
             raise RuntimeError(f"Failed to read EEG file {filepath}: {str(e)}") from e
 
@@ -153,7 +157,6 @@ class Dataset:
             raw_clean = ica.apply(raw_asr, verbose=False)
 
             return raw_clean
-
         except Exception as e:
             raise RuntimeError(f"EEG preprocessing failed: {str(e)}") from e
 
@@ -185,7 +188,6 @@ class Dataset:
             )
 
             return epochs
-
         except Exception as e:
             raise RuntimeError(f"Epoching failed: {str(e)}") from e
 
@@ -257,7 +259,6 @@ class Dataset:
 
             # Assignment to subject
             self.participants_df.loc[subject_mask, columns] = rbps
-
         except Exception as e:
             raise RuntimeError(f"Failed to compute RBPs: {str(e)}") from e
 
@@ -289,7 +290,6 @@ class Dataset:
                 epochs = mne.read_epochs(filepath, verbose=False)
                 subject_id = os.path.basename(filepath).rstrip("_epo.fif")
                 self.compute_rbps(subject_id, epochs, sfreq, win, bands)
-
         except Exception as e:
             raise RuntimeError(f"Feature extraction failed: {str(e)}") from e
 
@@ -314,26 +314,22 @@ class Dataset:
 
             # Extract features from epochs
             self.extract_features()
-
         except Exception as e:
             raise RuntimeError(f"Failed to create dataset: {str(e)}") from e
 
     def save_dataset(self):
         """Save the created dataset as a CSV and a pickle file."""
         try:
-            filepath_csv = os.path.join(Config.PROCESSED_DATA_DIR, "participants.csv")
-            filepath_pkl = os.path.join(Config.PROCESSED_DATA_DIR, "participants.pkl")
-            self.participants_df.to_csv(filepath_csv, sep="\t")
-            self.participants_df.to_pickle(filepath_pkl)
-            return filepath_pkl
+            self.participants_df.to_csv(self.dataset_filepath_csv, sep="\t")
+            self.participants_df.to_pickle(self.dataset_filepath_pkl)
+            return self.dataset_filepath_pkl
         except Exception as e:
             raise RuntimeError(f"Failed to save dataset: {str(e)}") from e
 
     def get_processed_dataset_filepath(self):
         """Get the filepath of the processed dataset."""
-        filepath_pkl = os.path.join(Config.PROCESSED_DATA_DIR, "participants.pkl")
-        if not os.path.exists(filepath_pkl):
+        if not os.path.exists(self.dataset_filepath_pkl):
             raise FileNotFoundError(
-                f"Processed dataset not found at {filepath_pkl}. Please check that the dataset exists at this location, or update the configuration if you do not intend to load it."
+                f"Processed dataset not found at {self.dataset_filepath_pkl}. Please check that the dataset exists at this location, or update the configuration if you do not intend to load it."
             )
-        return filepath_pkl
+        return self.dataset_filepath_pkl
