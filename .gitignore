@@ -1,2 +1,4 @@
 __pycache__/
 data/
+src/models/optimized_hyperparams.json
+reports/figures/optuna/

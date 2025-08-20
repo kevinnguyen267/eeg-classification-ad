@@ -12,17 +12,13 @@ class Config:
     PROCESSED_DATA_DIR = DATA_DIR / "processed"
     REPORTS_DIR = PROJECT_ROOT / "reports"
     FIGURES_DIR = REPORTS_DIR / "figures"
+    OPTUNA_DIR = FIGURES_DIR / "optuna"
+    MODELS_DIR = PROJECT_ROOT / "src" / "models"
 
-    # Load dataset from checkpoints
-    LOAD_PREPROCESSED_EPOCHS = True
-    LOAD_PROCESSED_DATASET = True
-
-    # Visualize processed dataset
-    VISUALIZE = False
-
-    # Evaluate model using cross-validation
-    EVALUATE = True
-    CV_STRATEGY = "stratified_kfold"  # "loso" or "stratified_kfold"
+    # Load from checkpoints
+    LOAD_PREPROCESSED_EPOCHS = False
+    LOAD_PROCESSED_DATASET = False
+    LOAD_OPTIMIZED_HYPERPARAMS = False
 
     @staticmethod
     def setup_logging():
@@ -37,8 +33,11 @@ class Config:
     @staticmethod
     def create_directories():
         """Create necessary directories if they do not exist."""
+        os.makedirs(Config.RAW_DATA_DIR, exist_ok=True)
         os.makedirs(Config.INTERIM_DATA_DIR, exist_ok=True)
         os.makedirs(os.path.join(Config.INTERIM_DATA_DIR, "epochs"), exist_ok=True)
         os.makedirs(Config.PROCESSED_DATA_DIR, exist_ok=True)
         os.makedirs(Config.REPORTS_DIR, exist_ok=True)
         os.makedirs(Config.FIGURES_DIR, exist_ok=True)
+        os.makedirs(Config.OPTUNA_DIR, exist_ok=True)
+        os.makedirs(Config.MODELS_DIR, exist_ok=True)
