@@ -1,73 +1,88 @@
-# EEG-Based Classification of Alzheimer's Disease and Frontotemporal Dementia
+# EEG-Based Classification of Alzheimer's Disease
 
-A comprehensive machine learning pipeline that implements signal processing techniques and machine learning algorithms to distinguish between Alzheimer's Disease (AD), Frontotemporal Dementia (FTD), and healthy controls using electroencephalography (EEG) data.
+An optimized machine learning pipeline that implements advanced signal processing techniques and XGBoost classification to distinguish between Alzheimer's Disease (AD) and healthy controls using electroencephalography (EEG) data.
+
+## Classification Results
+The hyperparameter-tuned XGBoost model, evaluated using Leave-One-Subject-Out (LOSO) cross-validation, achieved a mean **accuracy of 84.62%**, indicating robust subject-independent classification of the EEG data.
 
 ## Pipeline Overview
 
 ### 1. Signal Preprocessing
 - **Bandpass Filtering**: 0.5–45 Hz Butterworth filter for noise removal
 - **Artifact Subspace Reconstruction (ASR)**: Automatic removal of high-amplitude artifacts
-- **Independent Component Analysis (ICA)**: Elimination of eye blink and muscle artifacts
+- **Independent Component Analysis (ICA)**: Elimination of eye blink and muscle artifacts using ICLabel
+
+**Raw EEG Data**
+![Raw EEG](reports/figures/preprocessing/raw_eeg.png)
+
+**Preprocessed EEG Data**
+![Preprocessed EEG](reports/figures/preprocessing/preprocessed_eeg.png)
 
 ### 2. Feature Extraction
 - **Epoching**: 4-second windows with 50% overlap for temporal analysis
-- **Power Spectral Density**: Welch's method for robust frequency domain analysis
-- **Relative Band Power (RBP)**: Normalized power across physiological frequency bands:
+- **Power Spectral Density**: Welch's method with 2-second windows for robust frequency domain analysis
+- **Per-Channel Relative Band Power (RBP)**: Channel-specific normalized power across physiological frequency bands:
   - Delta (0.5–4 Hz), Theta (4–8 Hz), Alpha (8–13 Hz), Beta (13–25 Hz), Gamma (25–45 Hz)
 
-### 3. Model Training and Evaluation
-- **Feature Selection**: Exhaustive search across all feature combinations
-- **Model Selection**: Comprehensive evaluation of 5 algorithms (LightGBM, SVM, KNN, MLP, Random Forest)
-- **Cross-Validation**: 5-fold for efficient and reliable performance estimation
+### 3. Model Optimization
+- **XGBoost Classifier**: Gradient boosting algorithm optimized for binary classification
+- **Hyperparameter Tuning**: Optuna-based optimization using Leave-One-Subject-Out (LOSO) cross-validation
+- **Performance Validation**: Rigorous cross-validation for reliable performance estimation
 
-## Visualizations
+## Project Structure
 
-### Signal Preprocessing Quality
-The preprocessing pipeline transforms noisy raw EEG signals into clean, analyzable data:
+```
+eeg-classification-ad/
+├── data/
+│   ├── raw/                            # OpenNeuro ds004504 dataset
+│   ├── interim/
+│   │   └── epochs/                     # Preprocessed epochs (.fif files)
+│   └── processed/                      # Feature-extracted datasets (.csv/.pkl)
+├── src/
+│   ├── pipeline.py                     # Main execution pipeline
+│   ├── config.py                       # Configuration and logging setup
+│   ├── models/
+│   │   ├── xgboost.py                  # XGBoost implementation with Optuna
+│   │   └── optimized_hyperparams.json  # Saved XGBoost optimal hyperparameters
+│   └── utils/
+│       └── dataset.py                  # EEG preprocessing and feature extraction
+├── reports/
+│   └── figures/
+│       ├── preprocessing/              # Raw and preprocessed EEG plots
+│       └── optuna/                     # Hyperparameter optimization plots
+└── environment.yml                     # Conda environment specification
+```
 
-**Raw EEG Data**
-![Raw EEG](reports/figures/raw_eeg.png)
+## Example Pipeline Logging
 
-**Preprocessed EEG Data**
-![Preprocessed EEG](reports/figures/preprocessed_eeg.png)
-
-### Feature Analysis
-RBP distributions reveal distinct neurophysiological patterns across diagnostic groups:
-
-![RBP by Band and Group](reports/figures/rbp_by_band_and_group_boxplot.png)
-
-## Results
-
-| Classification Task | Accuracy | Optimal Model | Key Features |
-|---------------------|----------|---------------|--------------|
-| **AD vs. CN** | **76.92%** | LightGBM | Delta, Theta, Alpha, Beta RBPs |
-| **FTD vs. CN** | **69.23%** | LightGBM | Alpha, Beta RBPs |
-
-### Key Insights
-- **Multi-band approach** improves AD classification performance
-- **Alpha and Beta bands** demonstrate highest discriminative power for FTD detection
-- **LightGBM** consistently outperforms other algorithms across both tasks
+```
+8:38:51 - INFO - Creating dataset (this may take a while)...
+Preprocessing      : 100%|██████████████████████████████████████████| 65/65 [55:33<00:00, 51.29s/it]
+Feature Extraction : 100%|██████████████████████████████████████████| 65/65 [00:59<00:00,  1.10it/s]
+9:35:24 - INFO - Successfully created dataset.
+9:35:24 - INFO - Optimizing XGBoost hyperparameters (this may take a while)...
+Best trial: 19. Best value: 0.846154: 100%|█████████████████████████| 50/50 [09:48<00:00, 11.76s/it]
+9:45:13 - INFO - Hyperparameter optimization complete.
+9:45:13 - INFO - Saving optimized hyperparameters...
+9:45:13 - INFO - Saving complete.
+9:45:13 - INFO - Saving hyperparameter optimization plots...
+9:45:14 - INFO - Saving complete.
+```
 
 ## Quick Start
 
 1. **Setup Environment**:
-   ```bash
+   ```
    conda env create -f environment.yml
-   conda activate eeg-classification-ad-ftd
+   conda activate eeg-classification-ad
    ```
 
-2. **Prepare Data**: Place all `sub-0XX` folders (each containing EEG `.set` files) and the `participants.tsv` file from the OpenNeuro ds004504 dataset into the `data/raw/` directory.
+2. **Prepare Data**: Download the OpenNeuro ds004504 dataset and place all `sub-0XX` folders and `participants.tsv` into the `data/raw/` directory. 
 
 3. **Run Pipeline**:
-   ```bash
+   ```
    python src/pipeline.py
    ```
-
-## Future Enhancements
-
-- Outlier Detection and Removal
-- Enhanced Signal Preprocessing Techniques
-- Hyperparameter Optimization
 
 ## References
 
